@@ -35,37 +35,40 @@ private:
     int balance;
 
 public:
-    Player(int initialBalance) : balance(initialBalance) {}
+    
+    Player(int balance) {
+        this->balance = balance;
+    }
 
-    void placeBet(int betAmount, int number, RouletteWheel& wheel) {
-        if (betAmount > balance) {
+    Player& placeBet(int betAmount, int number, RouletteWheel& wheel) {
+        if (betAmount > this->balance) {
             cout << "Insufficient balance." << endl;
-            return;
+            return *this; 
         }
 
         wheel.spinWheel();
         if (wheel.getNumber() == number) {
             int winnings = betAmount * 35;
-            balance += winnings;
-            cout << "You win! Your new balance is: $" << balance << endl;
+            this->balance += winnings;
+            cout << "You win! Your new balance is: $" << this->balance << endl;
         } else {
-            balance -= betAmount;
-            cout << "You lose! Your new balance is: $" << balance << endl;
+            this->balance -= betAmount;
+            cout << "You lose! Your new balance is: $" << this->balance << endl;
         }
+
+        return *this; 
     }
 
     int getBalance() const {
-
         return balance;
     }
 };
 
 int main() {
     RouletteWheel wheel;
-
     Player player(1000);
 
-    player.placeBet(100, 17, wheel);
+    player.placeBet(100, 17, wheel).placeBet(50, 3, wheel);
 
     cout << "Final Balance: $" << player.getBalance() << endl;
 
