@@ -66,11 +66,16 @@ public:
 
 int main() {
     RouletteWheel wheel;
-    Player player(1000);
 
-    player.placeBet(100, 17, wheel).placeBet(50, 3, wheel);
+    Player players[3] = { Player(1000), Player(1500), Player(2000) };
 
-    cout << "Final Balance: $" << player.getBalance() << endl;
+    players[0].placeBet(100, 17, wheel);
+    players[1].placeBet(200, 5, wheel);
+    players[2].placeBet(300, 10, wheel);
+
+    for (int i = 0; i < 3; ++i) {
+        cout << "Player " << (i + 1) << " Final Balance: $" << players[i].getBalance() << endl;
+    }
 
     return 0;
 }
