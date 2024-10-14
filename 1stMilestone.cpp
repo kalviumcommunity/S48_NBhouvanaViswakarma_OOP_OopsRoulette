@@ -5,47 +5,63 @@ using namespace std;
 
 class RouletteWheel {
 private:
-    int currentNumber;         // Private: internal state
-    static int totalSpins;     // Private: shared by all instances
+    int currentNumber;
+    static int totalSpins;
 
 public:
-    RouletteWheel() {          // Public: constructor
+    RouletteWheel() {
         srand(static_cast<unsigned>(time(0)));
         currentNumber = 0;
+        cout << "RouletteWheel created with default constructor." << endl;
     }
 
-    void spinWheel() {         // Public: action that spins the wheel
+    ~RouletteWheel() {
+        cout << "RouletteWheel destroyed." << endl;
+    }
+
+    void spinWheel() {
         currentNumber = rand() % 37;
         cout << "The wheel spins and lands on: " << currentNumber << endl;
-        totalSpins++;        
+        totalSpins++;
     }
 
-    int getCurrentNumber() const {  // Public getter for current number
-        return currentNumber;       // Allows access to the current number without modifying it
+    int getCurrentNumber() const {
+        return currentNumber;
     }
 
-    static int getTotalSpins() {    // Public static method to get the total spins
+    static int getTotalSpins() {
         return totalSpins;
     }
 };
 
-int RouletteWheel::totalSpins = 0; 
+int RouletteWheel::totalSpins = 0;
 
 class Player {
 private:
-    int balance;                // Private: player's balance
-    static int totalPlayers;    // Private: shared across all players
+    int balance;
+    static int totalPlayers;
 
 public:
+    Player() {
+        balance = 1000;  // Default balance
+        totalPlayers++;
+        cout << "Player created with default constructor. Initial balance: $" << balance << endl;
+    }
+
     Player(int initialBalance) : balance(initialBalance) {
         totalPlayers++;
+        cout << "Player created with parameterized constructor. Initial balance: $" << balance << endl;
     }
 
-    int getBalance() const {    // Public getter for balance
-        return balance;       
+    ~Player() {
+        cout << "Player destroyed. Final balance: $" << balance << endl;
     }
 
-    void setBalance(int newBalance) {   // Public setter for balance
+    int getBalance() const {
+        return balance;
+    }
+
+    void setBalance(int newBalance) {
         balance = newBalance;
     }
 
@@ -55,11 +71,10 @@ public:
             return;
         }
 
-
         wheel.spinWheel();
         if (wheel.getCurrentNumber() == number) {
             int winnings = betAmount * 35;
-            setBalance(balance + winnings); 
+            setBalance(balance + winnings);
             cout << "You win! Your new balance is: $" << getBalance() << endl;
         } else {
             setBalance(balance - betAmount);
@@ -67,11 +82,11 @@ public:
         }
     }
 
-    static int getTotalPlayers() {  // Public static method
+    static int getTotalPlayers() {
         return totalPlayers;
     }
 
-    static void displayGameStats() {  // Public static method
+    static void displayGameStats() {
         cout << "==== Game Statistics ====" << endl;
         cout << "Total Players: " << getTotalPlayers() << endl;
         cout << "Total Spins: " << RouletteWheel::getTotalSpins() << endl;
@@ -79,16 +94,15 @@ public:
     }
 };
 
-int Player::totalPlayers = 0; 
+int Player::totalPlayers = 0;
 
 int main() {
     RouletteWheel* wheel = new RouletteWheel();
 
-    Player* player1 = new Player(1000);
-    Player* player2 = new Player(1200);
+    Player* player1 = new Player();             // default constructor
+    Player* player2 = new Player(1500);         // parameterized constructor
 
     player1->placeBet(100, 17, *wheel);
-
     player2->placeBet(200, 25, *wheel);
 
     cout << "Player 1 Final Balance: $" << player1->getBalance() << endl;
