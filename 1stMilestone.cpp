@@ -12,7 +12,7 @@ public:
     RouletteWheel() {
         srand(static_cast<unsigned>(time(0)));
         currentNumber = 0;
-        cout << "RouletteWheel created with default constructor." << endl;
+        cout << "RouletteWheel created." << endl;
     }
 
     ~RouletteWheel() {
@@ -37,15 +37,15 @@ public:
 int RouletteWheel::totalSpins = 0;
 
 class Player {
-private:
+protected:
     int balance;
     static int totalPlayers;
 
 public:
     Player() {
-        balance = 1000;  // Default balance
+        balance = 1000;
         totalPlayers++;
-        cout << "Player created with default constructor. Initial balance: $" << balance << endl;
+        cout << "Player created. Initial balance: $" << balance << endl;
     }
 
     Player(int initialBalance) : balance(initialBalance) {
@@ -96,23 +96,65 @@ public:
 
 int Player::totalPlayers = 0;
 
+class Rewards {
+public:
+    virtual void earnRewards() = 0; 
+};
+
+class VIPPlayer : public Player, public Rewards {
+private:
+    int bonusBalance;
+
+public:
+    VIPPlayer() : Player(), bonusBalance(200) {
+        cout << "VIP Player created with bonus balance of $" << bonusBalance << endl;
+    }
+
+    VIPPlayer(int initialBalance) : Player(initialBalance), bonusBalance(500) {
+        cout << "VIP Player created with bonus balance of $" << bonusBalance << endl;
+    }
+
+    void placeBet(int betAmount, int number, RouletteWheel& wheel) {
+        if (betAmount > balance) {
+            cout << "Insufficient balance." << endl;
+            return;
+        }
+
+        wheel.spinWheel();
+        if (wheel.getCurrentNumber() == number) {
+            int winnings = betAmount * 35 + bonusBalance;
+            setBalance(balance + winnings);
+            cout << "VIP win! You earned a bonus. Your new balance is: $" << getBalance() << endl;
+        } else {
+            setBalance(balance - betAmount);
+            cout << "You lose! Your new balance is: $" << getBalance() << endl;
+        }
+    }
+
+    void earnRewards() override {
+        cout << "VIP Player earns extra rewards after every bet!" << endl;
+    }
+};
+
 int main() {
     RouletteWheel* wheel = new RouletteWheel();
 
-    Player* player1 = new Player();             // default constructor
-    Player* player2 = new Player(1500);         // parameterized constructor
+    Player* player1 = new Player(1000);        
+    VIPPlayer* vipPlayer = new VIPPlayer(1500);
 
     player1->placeBet(100, 17, *wheel);
-    player2->placeBet(200, 25, *wheel);
+    vipPlayer->placeBet(200, 5, *wheel);
 
     cout << "Player 1 Final Balance: $" << player1->getBalance() << endl;
-    cout << "Player 2 Final Balance: $" << player2->getBalance() << endl;
+    cout << "VIP Player Final Balance: $" << vipPlayer->getBalance() << endl;
+
+    vipPlayer->earnRewards();
 
     Player::displayGameStats();
 
     delete wheel;
     delete player1;
-    delete player2;
+    delete vipPlayer;
 
     return 0;
 }
