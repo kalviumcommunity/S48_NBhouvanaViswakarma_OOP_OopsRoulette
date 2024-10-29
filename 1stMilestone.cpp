@@ -113,6 +113,7 @@ public:
     VIPPlayer(int initialBalance) : Player(initialBalance), bonusBalance(500) {
         cout << "VIP Player created with bonus balance of $" << bonusBalance << endl;
     }
+    
 
     void placeBet(int betAmount, int number, RouletteWheel& wheel) {
         if (betAmount > balance) {
