@@ -53,7 +53,7 @@ public:
         cout << "Player created with parameterized constructor. Initial balance: $" << balance << endl;
     }
 
-    ~Player() {
+    virtual ~Player() {
         cout << "Player destroyed. Final balance: $" << balance << endl;
     }
 
@@ -65,7 +65,7 @@ public:
         balance = newBalance;
     }
 
-    void placeBet(int betAmount, int number, RouletteWheel& wheel) {
+    virtual void placeBet(int betAmount, int number, RouletteWheel& wheel) {
         if (betAmount > balance) {
             cout << "Insufficient balance." << endl;
             return;
@@ -114,8 +114,7 @@ public:
         cout << "VIP Player created with bonus balance of $" << bonusBalance << endl;
     }
     
-
-    void placeBet(int betAmount, int number, RouletteWheel& wheel) {
+    void placeBet(int betAmount, int number, RouletteWheel& wheel) override {
         if (betAmount > balance) {
             cout << "Insufficient balance." << endl;
             return;
