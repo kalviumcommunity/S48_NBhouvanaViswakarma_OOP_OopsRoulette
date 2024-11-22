@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <string>
 using namespace std;
 
 // Abstract class for Rewards functionality
@@ -63,13 +64,36 @@ public:
     }
 };
 
+// Abstract Betting Strategy Interface (OCP, Strategy Pattern)
+class BettingStrategy {
+public:
+    virtual int calculateBet(int baseBet) const = 0;
+};
+
+// Aggressive Strategy: Bet is doubled each time
+class AggressiveStrategy : public BettingStrategy {
+public:
+    int calculateBet(int baseBet) const override {
+        return baseBet * 2;
+    }
+};
+
+// Conservative Strategy: Bet is reduced to half each time
+class ConservativeStrategy : public BettingStrategy {
+public:
+    int calculateBet(int baseBet) const override {
+        return baseBet / 2;
+    }
+};
+
 // Base Player class to be extended for different types of players
 class Player {
 protected:
     int balance;
+    const BettingStrategy* strategy;
 
 public:
-    Player(int initialBalance = 1000) : balance(initialBalance) {
+    Player(int initialBalance, const BettingStrategy* strat) : balance(initialBalance), strategy(strat) {
         GameStats::incrementPlayers();
     }
 
@@ -83,18 +107,20 @@ public:
         balance = newBalance;
     }
 
-    virtual void placeBet(int betAmount, int number, IWheel& wheel) = 0;
+    virtual void placeBet(int baseBetAmount, int number, IWheel& wheel) = 0;
 };
 
 // VIPPlayer inherits Player and Rewards to provide bonus features (OCP, ISP)
 class VIPPlayer : public Player, public Rewards {
 private:
-    int bonusBalance;
+    int rewardPoints;
 
 public:
-    VIPPlayer(int initialBalance = 1500) : Player(initialBalance), bonusBalance(500) {}
+    VIPPlayer(int initialBalance, const BettingStrategy* strat) 
+        : Player(initialBalance, strat), rewardPoints(0) {}
 
-    void placeBet(int betAmount, int number, IWheel& wheel) override {
+    void placeBet(int baseBetAmount, int number, IWheel& wheel) override {
+        int betAmount = strategy->calculateBet(baseBetAmount);
         if (betAmount > balance) {
             cout << "Insufficient balance." << endl;
             return;
@@ -102,9 +128,10 @@ public:
 
         wheel.spin();
         if (wheel.getCurrentNumber() == number) {
-            int winnings = betAmount * 35 + bonusBalance;
+            int winnings = betAmount * 35;
             setBalance(balance + winnings);
-            cout << "VIP win! You earned a bonus. New balance: $" << getBalance() << endl;
+            rewardPoints += 100;  // Earn reward points on win
+            cout << "VIP win! New balance: $" << getBalance() << ", Reward Points: " << rewardPoints << endl;
         } else {
             setBalance(balance - betAmount);
             cout << "You lose! New balance: $" << getBalance() << endl;
@@ -114,14 +141,25 @@ public:
     void earnRewards() override {
         cout << "VIP Player earns extra rewards after every bet!" << endl;
     }
+
+    void redeemPointsForBalance() {
+        if (rewardPoints >= 500) {
+            balance += 100;
+            rewardPoints -= 500;
+            cout << "Redeemed 500 points for $100! New balance: $" << balance << ", Points left: " << rewardPoints << endl;
+        } else {
+            cout << "Not enough points to redeem." << endl;
+        }
+    }
 };
 
 // RegularPlayer class extending Player, no special rewards (OCP)
 class RegularPlayer : public Player {
 public:
-    RegularPlayer(int initialBalance = 1000) : Player(initialBalance) {}
+    RegularPlayer(int initialBalance, const BettingStrategy* strat) : Player(initialBalance, strat) {}
 
-    void placeBet(int betAmount, int number, IWheel& wheel) override {
+    void placeBet(int baseBetAmount, int number, IWheel& wheel) override {
+        int betAmount = strategy->calculateBet(baseBetAmount);
         if (betAmount > balance) {
             cout << "Insufficient balance." << endl;
             return;
@@ -142,19 +180,24 @@ public:
 int main() {
     IWheel* wheel = new RouletteWheel();
 
-    Player* player1 = new RegularPlayer(1000);
-    VIPPlayer* vipPlayer = new VIPPlayer(1500);
+    // Betting strategies
+    BettingStrategy* aggressive = new AggressiveStrategy();
+    BettingStrategy* conservative = new ConservativeStrategy();
 
-    player1->placeBet(100, 17, *wheel);
+    // Players with different strategies
+    Player* player1 = new RegularPlayer(1000, conservative);
+    VIPPlayer* vipPlayer = new VIPPlayer(1500, aggressive);
+
+    player1->placeBet(50, 17, *wheel);
     vipPlayer->placeBet(200, 5, *wheel);
 
-    cout << "Player 1 Final Balance: $" << player1->getBalance() << endl;
-    cout << "VIP Player Final Balance: $" << vipPlayer->getBalance() << endl;
-
     vipPlayer->earnRewards();
+    vipPlayer->redeemPointsForBalance();
     GameStats::displayStats();
 
     delete wheel;
+    delete aggressive;
+    delete conservative;
     delete player1;
     delete vipPlayer;
 
