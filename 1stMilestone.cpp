@@ -1,6 +1,8 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <vector>
+#include <string>
 using namespace std;
 
 // Abstract class for Rewards functionality
@@ -63,13 +65,44 @@ public:
     }
 };
 
+// Betting Type Interface (for different types of bets)
+class BetType {
+public:
+    virtual int calculateWinnings(int betAmount) const = 0;
+};
+
+// Straight Bet: Player bets on a single number (payout multiplier 35x)
+class StraightBet : public BetType {
+public:
+    int calculateWinnings(int betAmount) const override {
+        return betAmount * 35;
+    }
+};
+
+// Split Bet: Player bets on two adjacent numbers (payout multiplier 17x)
+class SplitBet : public BetType {
+public:
+    int calculateWinnings(int betAmount) const override {
+        return betAmount * 17;
+    }
+};
+
+// Corner Bet: Player bets on four numbers that form a square (payout multiplier 8x)
+class CornerBet : public BetType {
+public:
+    int calculateWinnings(int betAmount) const override {
+        return betAmount * 8;
+    }
+};
+
 // Base Player class to be extended for different types of players
 class Player {
 protected:
     int balance;
+    vector<int> winHistory;  // Track winning numbers
 
 public:
-    Player(int initialBalance = 1000) : balance(initialBalance) {
+    Player(int initialBalance) : balance(initialBalance) {
         GameStats::incrementPlayers();
     }
 
@@ -83,18 +116,31 @@ public:
         balance = newBalance;
     }
 
-    virtual void placeBet(int betAmount, int number, IWheel& wheel) = 0;
+    virtual void placeBet(int betAmount, int number, IWheel& wheel, const BetType& betType) = 0;
+
+    void addWinToHistory(int winningNumber) {
+        winHistory.push_back(winningNumber);
+    }
+
+    void displayWinHistory() const {
+        cout << "Win History: ";
+        for (int number : winHistory) {
+            cout << number << " ";
+        }
+        cout << endl;
+    }
 };
 
 // VIPPlayer inherits Player and Rewards to provide bonus features (OCP, ISP)
 class VIPPlayer : public Player, public Rewards {
 private:
-    int bonusBalance;
+    int rewardPoints;
+    string loyaltyTier;
 
 public:
-    VIPPlayer(int initialBalance = 1500) : Player(initialBalance), bonusBalance(500) {}
+    VIPPlayer(int initialBalance) : Player(initialBalance), rewardPoints(0), loyaltyTier("Silver") {}
 
-    void placeBet(int betAmount, int number, IWheel& wheel) override {
+    void placeBet(int betAmount, int number, IWheel& wheel, const BetType& betType) override {
         if (betAmount > balance) {
             cout << "Insufficient balance." << endl;
             return;
@@ -102,9 +148,12 @@ public:
 
         wheel.spin();
         if (wheel.getCurrentNumber() == number) {
-            int winnings = betAmount * 35 + bonusBalance;
+            int winnings = betType.calculateWinnings(betAmount);
             setBalance(balance + winnings);
-            cout << "VIP win! You earned a bonus. New balance: $" << getBalance() << endl;
+            rewardPoints += 100;
+            addWinToHistory(number);
+            updateLoyaltyTier();  // Check if loyalty tier should be updated
+            cout << "VIP win! New balance: $" << getBalance() << ", Reward Points: " << rewardPoints << ", Tier: " << loyaltyTier << endl;
         } else {
             setBalance(balance - betAmount);
             cout << "You lose! New balance: $" << getBalance() << endl;
@@ -114,14 +163,37 @@ public:
     void earnRewards() override {
         cout << "VIP Player earns extra rewards after every bet!" << endl;
     }
+
+    void redeemPointsForBalance() {
+        if (rewardPoints >= 500) {
+            balance += 100;
+            rewardPoints -= 500;
+            cout << "Redeemed 500 points for $100! New balance: $" << balance << ", Points left: " << rewardPoints << endl;
+        } else {
+            cout << "Not enough points to redeem." << endl;
+        }
+    }
+
+private:
+    void updateLoyaltyTier() {
+        if (rewardPoints >= 1000 && loyaltyTier == "Silver") {
+            loyaltyTier = "Gold";
+            balance += 200;
+            cout << "Congratulations! Upgraded to Gold Tier with a bonus of $200!" << endl;
+        } else if (rewardPoints >= 2000 && loyaltyTier == "Gold") {
+            loyaltyTier = "Platinum";
+            balance += 500;
+            cout << "Congratulations! Upgraded to Platinum Tier with a bonus of $500!" << endl;
+        }
+    }
 };
 
 // RegularPlayer class extending Player, no special rewards (OCP)
 class RegularPlayer : public Player {
 public:
-    RegularPlayer(int initialBalance = 1000) : Player(initialBalance) {}
+    RegularPlayer(int initialBalance) : Player(initialBalance) {}
 
-    void placeBet(int betAmount, int number, IWheel& wheel) override {
+    void placeBet(int betAmount, int number, IWheel& wheel, const BetType& betType) override {
         if (betAmount > balance) {
             cout << "Insufficient balance." << endl;
             return;
@@ -129,8 +201,9 @@ public:
 
         wheel.spin();
         if (wheel.getCurrentNumber() == number) {
-            int winnings = betAmount * 35;
+            int winnings = betType.calculateWinnings(betAmount);
             setBalance(balance + winnings);
+            addWinToHistory(number);
             cout << "You win! New balance: $" << getBalance() << endl;
         } else {
             setBalance(balance - betAmount);
@@ -139,22 +212,43 @@ public:
     }
 };
 
+// Separate GameDisplay class for handling output formatting (SRP)
+class GameDisplay {
+public:
+    static void displayWelcomeMessage() {
+        cout << "=== Welcome to the Enhanced Roulette Game! ===" << endl;
+    }
+
+    static void displayGoodbyeMessage() {
+        cout << "Thank you for playing!" << endl;
+    }
+};
+
 int main() {
+    GameDisplay::displayWelcomeMessage();
+
     IWheel* wheel = new RouletteWheel();
+    BetType* straightBet = new StraightBet();
+    BetType* cornerBet = new CornerBet();
 
     Player* player1 = new RegularPlayer(1000);
     VIPPlayer* vipPlayer = new VIPPlayer(1500);
 
-    player1->placeBet(100, 17, *wheel);
-    vipPlayer->placeBet(200, 5, *wheel);
-
-    cout << "Player 1 Final Balance: $" << player1->getBalance() << endl;
-    cout << "VIP Player Final Balance: $" << vipPlayer->getBalance() << endl;
+    player1->placeBet(100, 17, *wheel, *straightBet);
+    vipPlayer->placeBet(200, 5, *wheel, *cornerBet);
 
     vipPlayer->earnRewards();
+    vipPlayer->redeemPointsForBalance();
+
+    player1->displayWinHistory();
+    vipPlayer->displayWinHistory();
+
     GameStats::displayStats();
+    GameDisplay::displayGoodbyeMessage();
 
     delete wheel;
+    delete straightBet;
+    delete cornerBet;
     delete player1;
     delete vipPlayer;
 
