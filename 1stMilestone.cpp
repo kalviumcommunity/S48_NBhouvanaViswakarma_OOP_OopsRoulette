@@ -3,59 +3,77 @@
 #include <ctime>
 using namespace std;
 
-class RouletteWheel {
+// Abstract class for Rewards functionality
+class Rewards {
+public:
+    virtual void earnRewards() = 0;
+};
+
+// Interface for wheel spinning functionality
+class IWheel {
+public:
+    virtual void spin() = 0;
+    virtual int getCurrentNumber() const = 0;
+};
+
+// Separate GameStats class to handle all statistics (SRP)
+class GameStats {
+private:
+    static int totalSpins;
+    static int totalPlayers;
+
+public:
+    static void incrementSpins() {
+        totalSpins++;
+    }
+
+    static void incrementPlayers() {
+        totalPlayers++;
+    }
+
+    static void displayStats() {
+        cout << "==== Game Statistics ====" << endl;
+        cout << "Total Players: " << totalPlayers << endl;
+        cout << "Total Spins: " << totalSpins << endl;
+        cout << "=========================" << endl;
+    }
+};
+
+int GameStats::totalSpins = 0;
+int GameStats::totalPlayers = 0;
+
+// RouletteWheel class that implements IWheel for SRP and DIP compliance
+class RouletteWheel : public IWheel {
 private:
     int currentNumber;
-    static int totalSpins;
 
 public:
     RouletteWheel() {
         srand(static_cast<unsigned>(time(0)));
         currentNumber = 0;
-        cout << "RouletteWheel created." << endl;
     }
 
-    ~RouletteWheel() {
-        cout << "RouletteWheel destroyed." << endl;
-    }
-
-    void spinWheel() {
+    void spin() override {
         currentNumber = rand() % 37;
-        cout << "The wheel spins and lands on: " << currentNumber << endl;
-        totalSpins++;
+        GameStats::incrementSpins();
     }
 
-    int getCurrentNumber() const {
+    int getCurrentNumber() const override {
         return currentNumber;
-    }
-
-    static int getTotalSpins() {
-        return totalSpins;
     }
 };
 
-int RouletteWheel::totalSpins = 0;
-
+// Base Player class to be extended for different types of players
 class Player {
 protected:
     int balance;
-    static int totalPlayers;
 
 public:
-    Player() {
-        balance = 1000;
-        totalPlayers++;
-        cout << "Player created. Initial balance: $" << balance << endl;
+    Player(int initialBalance = 1000) : balance(initialBalance) {
+        GameStats::incrementPlayers();
     }
 
-    Player(int initialBalance) : balance(initialBalance) {
-        totalPlayers++;
-        cout << "Player created with parameterized constructor. Initial balance: $" << balance << endl;
-    }
-
-    virtual ~Player() {
-        cout << "Player destroyed. Final balance: $" << balance << endl;
-    }
+    virtual ~Player() {}
 
     int getBalance() const {
         return balance;
@@ -65,69 +83,31 @@ public:
         balance = newBalance;
     }
 
-    virtual void placeBet(int betAmount, int number, RouletteWheel& wheel) {
-        if (betAmount > balance) {
-            cout << "Insufficient balance." << endl;
-            return;
-        }
-
-        wheel.spinWheel();
-        if (wheel.getCurrentNumber() == number) {
-            int winnings = betAmount * 35;
-            setBalance(balance + winnings);
-            cout << "You win! Your new balance is: $" << getBalance() << endl;
-        } else {
-            setBalance(balance - betAmount);
-            cout << "You lose! Your new balance is: $" << getBalance() << endl;
-        }
-    }
-
-    static int getTotalPlayers() {
-        return totalPlayers;
-    }
-
-    static void displayGameStats() {
-        cout << "==== Game Statistics ====" << endl;
-        cout << "Total Players: " << getTotalPlayers() << endl;
-        cout << "Total Spins: " << RouletteWheel::getTotalSpins() << endl;
-        cout << "=========================" << endl;
-    }
+    virtual void placeBet(int betAmount, int number, IWheel& wheel) = 0;
 };
 
-int Player::totalPlayers = 0;
-
-class Rewards {
-public:
-    virtual void earnRewards() = 0; 
-};
-
+// VIPPlayer inherits Player and Rewards to provide bonus features (OCP, ISP)
 class VIPPlayer : public Player, public Rewards {
 private:
     int bonusBalance;
 
 public:
-    VIPPlayer() : Player(), bonusBalance(200) {
-        cout << "VIP Player created with bonus balance of $" << bonusBalance << endl;
-    }
+    VIPPlayer(int initialBalance = 1500) : Player(initialBalance), bonusBalance(500) {}
 
-    VIPPlayer(int initialBalance) : Player(initialBalance), bonusBalance(500) {
-        cout << "VIP Player created with bonus balance of $" << bonusBalance << endl;
-    }
-    
-    void placeBet(int betAmount, int number, RouletteWheel& wheel) override {
+    void placeBet(int betAmount, int number, IWheel& wheel) override {
         if (betAmount > balance) {
             cout << "Insufficient balance." << endl;
             return;
         }
 
-        wheel.spinWheel();
+        wheel.spin();
         if (wheel.getCurrentNumber() == number) {
             int winnings = betAmount * 35 + bonusBalance;
             setBalance(balance + winnings);
-            cout << "VIP win! You earned a bonus. Your new balance is: $" << getBalance() << endl;
+            cout << "VIP win! You earned a bonus. New balance: $" << getBalance() << endl;
         } else {
             setBalance(balance - betAmount);
-            cout << "You lose! Your new balance is: $" << getBalance() << endl;
+            cout << "You lose! New balance: $" << getBalance() << endl;
         }
     }
 
@@ -136,10 +116,33 @@ public:
     }
 };
 
-int main() {
-    RouletteWheel* wheel = new RouletteWheel();
+// RegularPlayer class extending Player, no special rewards (OCP)
+class RegularPlayer : public Player {
+public:
+    RegularPlayer(int initialBalance = 1000) : Player(initialBalance) {}
 
-    Player* player1 = new Player(1000);        
+    void placeBet(int betAmount, int number, IWheel& wheel) override {
+        if (betAmount > balance) {
+            cout << "Insufficient balance." << endl;
+            return;
+        }
+
+        wheel.spin();
+        if (wheel.getCurrentNumber() == number) {
+            int winnings = betAmount * 35;
+            setBalance(balance + winnings);
+            cout << "You win! New balance: $" << getBalance() << endl;
+        } else {
+            setBalance(balance - betAmount);
+            cout << "You lose! New balance: $" << getBalance() << endl;
+        }
+    }
+};
+
+int main() {
+    IWheel* wheel = new RouletteWheel();
+
+    Player* player1 = new RegularPlayer(1000);
     VIPPlayer* vipPlayer = new VIPPlayer(1500);
 
     player1->placeBet(100, 17, *wheel);
@@ -149,8 +152,7 @@ int main() {
     cout << "VIP Player Final Balance: $" << vipPlayer->getBalance() << endl;
 
     vipPlayer->earnRewards();
-
-    Player::displayGameStats();
+    GameStats::displayStats();
 
     delete wheel;
     delete player1;
